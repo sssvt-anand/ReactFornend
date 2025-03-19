@@ -9,7 +9,12 @@ const { Title } = Typography;
 
 const Dashboard = () => {
   const [expenses, setExpenses] = useState([]);
-  const [summary, setSummary] = useState({ total: 0, count: 0 });
+  const [summary, setSummary] = useState({ 
+    total: 0, 
+    totalCleared: 0,
+    totalRemaining: 0,
+    count: 0 
+  });
   const [memberBalances, setMemberBalances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,13 +24,22 @@ const Dashboard = () => {
     setError(null);
     try {
       const expensesRes = await api.get("/api/expenses");
-      setExpenses(expensesRes.data.slice(-5).reverse());
+      const allExpenses = expensesRes.data;
 
-      const totalAmount = expensesRes.data.reduce((sum, expense) => sum + expense.amount, 0);
+      // Calculate totals
+      const totalAmount = allExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const totalCleared = allExpenses.reduce((sum, expense) => sum + (expense.clearedAmount || 0), 0);
+      const totalRemaining = totalAmount - totalCleared;
+
       setSummary({
         total: totalAmount,
-        count: expensesRes.data.length
+        totalCleared: totalCleared,
+        totalRemaining: totalRemaining,
+        count: allExpenses.length
       });
+
+      // Recent expenses (last 5)
+      setExpenses(allExpenses.slice(-5).reverse());
 
       // Fetch and format member balances
       const balancesRes = await api.get("/api/expenses/summary");
@@ -124,7 +138,7 @@ const Dashboard = () => {
       <Content>
         <Title level={2}>Dashboard Overview</Title>
         <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-          <Col span={12}>
+          <Col span={6}>
             <Card>
               <Statistic
                 title="Total Expenses"
@@ -135,7 +149,29 @@ const Dashboard = () => {
               />
             </Card>
           </Col>
-          <Col span={12}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Total Cleared"
+                value={summary.totalCleared}
+                precision={2}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: '#3f8600' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Total Remaining"
+                value={summary.totalRemaining}
+                precision={2}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: '#cf1322' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
             <Card>
               <Statistic
                 title="Total Transactions"
