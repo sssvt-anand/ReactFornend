@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message, Typography } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -16,14 +16,22 @@ const Register = () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const response = await axios.post(`${apiBaseUrl}/auth/register`, values);
+      const response = await axios.post(`${apiBaseUrl}/auth/register`, {
+        name: values.name,
+        email: values.email,
+        password: values.password
+      });
       
       if (response.data.status === 'success') {
-        message.success('Registration successful!');
+        message.success(response.data.message || 'Registration successful!');
         navigate('/login');
       }
     } catch (error) {
-      setErrorMsg(error.response?.data?.message || 'Registration failed');
+      const errorMessage = error.response?.data?.message || 
+                         error.response?.data?.error || 
+                         'Registration failed';
+      setErrorMsg(errorMessage);
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -67,26 +75,63 @@ const Register = () => {
           autoComplete="off"
         >
           <Form.Item
-            name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            name="name"
+            rules={[{ required: true, message: 'Please input your name!' }]}
           >
-            <Input
-              prefix={<UserOutlined style={{ color: '#7f8c8d' }} />}
-              placeholder="Username"
-              size="large"
-              style={{ borderRadius: 8 }}
+            <Input 
+              prefix={<UserOutlined style={{ color: '#7f8c8d' }} />} 
+              placeholder="Full Name" 
+              size="large" 
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            rules={[
+              { required: true, message: 'Please input your email!' },
+              { type: 'email', message: 'Please enter a valid email!' }
+            ]}
+          >
+            <Input 
+              prefix={<MailOutlined style={{ color: '#7f8c8d' }} />} 
+              placeholder="Email" 
+              size="large" 
             />
           </Form.Item>
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
+            rules={[
+              { required: true, message: 'Please input your password!' },
+              { min: 8, message: 'Password must be at least 8 characters!' }
+            ]}
           >
-            <Input.Password
-              prefix={<LockOutlined style={{ color: '#7f8c8d' }} />}
-              placeholder="Password"
-              size="large"
-              style={{ borderRadius: 8 }}
+            <Input.Password 
+              prefix={<LockOutlined style={{ color: '#7f8c8d' }} />} 
+              placeholder="Password" 
+              size="large" 
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirm"
+            dependencies={['password']}
+            rules={[
+              { required: true, message: 'Please confirm your password!' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject('Passwords do not match!');
+                },
+              }),
+            ]}
+          >
+            <Input.Password 
+              prefix={<LockOutlined style={{ color: '#7f8c8d' }} />} 
+              placeholder="Confirm Password" 
+              size="large" 
             />
           </Form.Item>
 

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Layout, Card, Table, Statistic, Row, Col, Typography, Spin, Alert } from 'antd';
-import { DollarOutlined, TeamOutlined } from '@ant-design/icons';
+import { DollarOutlined, TeamOutlined, PieChartOutlined } from '@ant-design/icons';
 import api from '../utils/api';
 import moment from 'moment';
 
 const { Content } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const Dashboard = () => {
   const [expenses, setExpenses] = useState([]);
@@ -16,6 +16,12 @@ const Dashboard = () => {
     count: 0 
   });
   const [memberBalances, setMemberBalances] = useState([]);
+  const [budgetStatus, setBudgetStatus] = useState({
+    totalBudget: 0,
+    utilizedBudget: 0,
+    remainingBudget: 0,
+    monthYear: ''
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -23,6 +29,7 @@ const Dashboard = () => {
     setLoading(true);
     setError(null);
     try {
+      // Fetch expenses data
       const expensesRes = await api.get("/api/expenses");
       const allExpenses = expensesRes.data;
 
@@ -41,7 +48,7 @@ const Dashboard = () => {
       // Recent expenses (last 5)
       setExpenses(allExpenses.slice(-5).reverse());
 
-      // Fetch and format member balances
+      // Fetch member balances
       const balancesRes = await api.get("/api/expenses/summary");
       const formattedBalances = Object.entries(balancesRes.data).map(([name, balances]) => ({
         key: name,
@@ -51,6 +58,15 @@ const Dashboard = () => {
         remaining: balances.remaining
       }));
       setMemberBalances(formattedBalances);
+
+      // Fetch budget status
+      const budgetRes = await api.get("/api/budget/status");
+      setBudgetStatus({
+        totalBudget: budgetRes.data.totalBudget,
+        utilizedBudget: budgetRes.data.utilizedBudget,
+        remainingBudget: budgetRes.data.remainingBudget,
+        monthYear: budgetRes.data.monthYear
+      });
     } catch (error) {
       setError('Error fetching data.');
     } finally {
@@ -137,6 +153,54 @@ const Dashboard = () => {
     <Layout style={{ minHeight: '100vh', padding: '24px' }}>
       <Content>
         <Title level={2}>Dashboard Overview</Title>
+        
+        {/* Budget Status Section */}
+        <Card title="Budget Status" style={{ marginBottom: 24 }}>
+          <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Statistic
+                title="Total Budget"
+                value={budgetStatus.totalBudget}
+                precision={2}
+                prefix="₹"
+                valueStyle={{ color: '#1890ff' }}
+              />
+              <Text type="secondary">{budgetStatus.monthYear}</Text>
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="Utilized Budget"
+                value={budgetStatus.utilizedBudget}
+                precision={2}
+                prefix="₹"
+                valueStyle={{ color: '#cf1322' }}
+              />
+              <Text type="secondary">
+                {budgetStatus.totalBudget > 0 
+                  ? `${((budgetStatus.utilizedBudget / budgetStatus.totalBudget) * 100).toFixed(1)}% utilized` 
+                  : 'N/A'}
+              </Text>
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="Remaining Budget"
+                value={budgetStatus.remainingBudget}
+                precision={2}
+                prefix="₹"
+                valueStyle={{ 
+                  color: budgetStatus.remainingBudget >= 0 ? '#3f8600' : '#cf1322' 
+                }}
+              />
+              <Text type="secondary">
+                {budgetStatus.totalBudget > 0 
+                  ? `${((budgetStatus.remainingBudget / budgetStatus.totalBudget) * 100).toFixed(1)}% remaining` 
+                  : 'N/A'}
+              </Text>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* Expense Summary Section */}
         <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
           <Col span={6}>
             <Card>
@@ -182,6 +246,8 @@ const Dashboard = () => {
             </Card>
           </Col>
         </Row>
+
+        {/* Tables Section */}
         <Row gutter={[24, 24]}>
           <Col span={12}>
             <Card title="Recent Expenses">

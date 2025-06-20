@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Layout, Table, Card, Typography, Space, message,
-  Button, Form, Input, Select, DatePicker, Modal
+  Button, Form, Input, Select, DatePicker, Modal,
+  Descriptions, Divider, Tag, Statistic, Row, Col, Spin
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -10,7 +11,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;
-const { Text } = Typography;
+const { Text, Title } = Typography;
 const { Option } = Select;
 
 const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
@@ -30,9 +31,13 @@ const ExpenseDashboard = () => {
   const [members, setMembers] = useState([]);
   const [memberExpenses, setMemberExpenses] = useState([]);
   const [isExpenseModalVisible, setExpenseModalVisible] = useState(false);
+  const [isDetailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState(null);
   const [form] = Form.useForm();
   const [userRole, setUserRole] = useState('USER');
   const [currentMemberId, setCurrentMemberId] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [isPaymentHistoryLoading, setIsPaymentHistoryLoading] = useState(false);
 
   // Role extraction function
   const getRoleFromToken = (decoded) => {
@@ -131,11 +136,14 @@ const ExpenseDashboard = () => {
       handleApiError(error, 'Failed to fetch member expenses');
     }
   }, []);
-
+    
   // Add Expense handler
   const handleAddExpense = async (values) => {
     try {
-      await axios.post(`${apiBaseUrl}/api/expenses`, values);
+      await axios.post(`${apiBaseUrl}/api/expenses`, {
+        ...values,
+        date: values.date.format('YYYY-MM-DD')
+      });
       message.success('Expense added successfully!');
       setExpenseModalVisible(false);
       form.resetFields();
@@ -144,6 +152,25 @@ const ExpenseDashboard = () => {
       handleApiError(error, 'Failed to add expense');
     }
   };
+
+  // Show expense details
+  const showExpenseDetails = async (expense) => {
+  try {
+    setIsPaymentHistoryLoading(true);
+    setSelectedExpense(expense);
+    
+    const response = await axios.get(`${apiBaseUrl}/api/expenses/${expense.id}/payments`);
+    console.log('Payment History Data:', response.data); // Add this line
+    console.log('Members Data:', members); // Add this line
+    setPaymentHistory(response.data);
+    
+    setDetailModalVisible(true);
+  } catch (error) {
+    handleApiError(error, 'Failed to fetch payment history');
+  } finally {
+    setIsPaymentHistoryLoading(false);
+  }
+};
 
   // Table columns
   const columns = [
@@ -163,18 +190,19 @@ const ExpenseDashboard = () => {
       dataIndex: 'amount',
       key: 'amount',
       render: value => `₹${value.toFixed(2)}`,
+      sorter: (a, b) => a.amount - b.amount,
     },
     {
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
       render: date => moment(date).format('YYYY-MM-DD'),
+      sorter: (a, b) => moment(a.date).unix() - moment(b.date).unix(),
     },
     {
       title: 'Status',
       key: 'status',
       render: (_, record) => {
-        // Safely handle undefined values
         const total = record.amount || 0;
         const cleared = record.clearedAmount || 0;
         const lastCleared = record.lastClearedAmount || 0;
@@ -207,8 +235,17 @@ const ExpenseDashboard = () => {
               <Text type="secondary">Pending Clearance</Text>
             )}
           </Space>
-          );
-       }
+        );
+      }
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Button type="link" onClick={() => showExpenseDetails(record)}>
+          View Details
+        </Button>
+      ),
     },
   ];
 
@@ -261,6 +298,11 @@ const ExpenseDashboard = () => {
           rowKey="id"
           bordered
           pagination={{ pageSize: 8 }}
+          onRow={(record) => {
+            return {
+              onClick: () => showExpenseDetails(record),
+            };
+          }}
         />
 
         {/* Add Expense Modal */}
@@ -293,6 +335,130 @@ const ExpenseDashboard = () => {
               Add Expense
             </Button>
           </Form>
+        </Modal>
+
+        {/* Expense Detail Modal */}
+        <Modal
+          title="Expense Details"
+          open={isDetailModalVisible}
+          onCancel={() => {
+            setDetailModalVisible(false);
+            setPaymentHistory([]);
+          }}
+          footer={null}
+          width={800}
+        >
+          {selectedExpense && (
+            <>
+              <Descriptions bordered column={2}>
+                <Descriptions.Item label="Member" span={2}>
+                  <Tag color="blue">{selectedExpense.member?.name || 'Unknown'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Description">
+                  {selectedExpense.description}
+                </Descriptions.Item>
+                <Descriptions.Item label="Date">
+                  {moment(selectedExpense.date).format('MMMM Do, YYYY')}
+                </Descriptions.Item>
+                <Descriptions.Item label="Created At">
+                  {moment(selectedExpense.createdAt).format('MMMM Do, YYYY h:mm a')}
+                </Descriptions.Item>
+              </Descriptions>
+
+              <Divider orientation="left">Amount Details</Divider>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Statistic
+                    title="Total Amount"
+                    value={selectedExpense.amount}
+                    precision={2}
+                    prefix="₹"
+                  />
+                </Col>
+                <Col span={8}>
+                  <Statistic
+                    title="Cleared Amount"
+                    value={selectedExpense.clearedAmount || 0}
+                    precision={2}
+                    prefix="₹"
+                    valueStyle={{ color: '#3f8600' }}
+                  />
+                </Col>
+                <Col span={8}>
+                  <Statistic
+                    title="Remaining Amount"
+                    value={(selectedExpense.amount - (selectedExpense.clearedAmount || 0))}
+                    precision={2}
+                    prefix="₹"
+                    valueStyle={{ 
+                      color: (selectedExpense.amount - (selectedExpense.clearedAmount || 0)) > 0 
+                        ? '#cf1322' 
+                        : '#3f8600'
+                    }}
+                  />
+                </Col>
+              </Row>
+
+              <Divider orientation="left">Payment History</Divider>
+              {isPaymentHistoryLoading ? (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <Spin size="large" />
+                </div>
+              ) : paymentHistory.length > 0 ? (
+                <Table
+  columns={[
+    { 
+      title: 'Amount', 
+      dataIndex: 'amount', 
+      render: val => `₹${val?.toFixed(2) || '0.00'}`,
+      align: 'right',
+      sorter: (a, b) => (a.amount || 0) - (b.amount || 0)
+    },
+    
+    { 
+      title: 'Paid By', 
+      dataIndex: ['clearedBy', 'name'],
+      render: (name, record) => (
+        <Text strong>{name || record.clearedBy?.name || 'Unknown'}</Text>
+      )
+    },
+    { 
+      title: 'Date', 
+      dataIndex: 'timestamp',
+      render: date => date ? moment(date).format('DD MMM YYYY hh:mm A') : 'N/A',
+      sorter: (a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0),
+      defaultSortOrder: 'descend'
+    },
+    
+  ]}
+  dataSource={paymentHistory}
+  rowKey="id"
+  pagination={false}
+  size="small"
+  bordered
+  summary={() => (
+    <Table.Summary fixed>
+      <Table.Summary.Row>
+        <Table.Summary.Cell index={0} colSpan={2}>
+          <Text strong>Total Cleared:</Text>
+        </Table.Summary.Cell>
+        <Table.Summary.Cell index={1} align="right">
+          <Text strong type="success">
+            ₹{paymentHistory.reduce((sum, payment) => sum + (payment.amount || 0), 0).toFixed(2)}
+          </Text>
+        </Table.Summary.Cell>
+        <Table.Summary.Cell index={2} colSpan={2} />
+      </Table.Summary.Row>
+    </Table.Summary>
+  )}
+/>
+              ) : (
+                <Card size="small">
+                  <Text type="secondary">No payment history recorded</Text>
+                </Card>
+              )}
+            </>
+          )}
         </Modal>
       </Content>
     </Layout>

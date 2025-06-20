@@ -174,17 +174,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddMember = async (values) => {
-    try {
-      await axios.post(`${apiBaseUrl}/api/members`, values);
-      message.success('Member added successfully!');
-      setMemberModalVisible(false);
-      memberForm.resetFields();
-      await fetchMembers();
-    } catch (error) {
-      handleApiError(error, 'Failed to add member');
-    }
-  };
+  
 
   const columns = [
     {
@@ -324,15 +314,7 @@ const AdminDashboard = () => {
             Add Expense
           </Button>
           
-          {userRole === 'ADMIN' && (
-            <Button 
-              type="dashed" 
-              icon={<UserOutlined />}
-              onClick={() => setMemberModalVisible(true)}
-            >
-              Add Member
-            </Button>
-          )}
+          
         </Space>
 
         <Table
@@ -373,25 +355,7 @@ const AdminDashboard = () => {
           </Form>
         </Modal>
 
-        <Modal
-          title="Add New Member"
-          open={isMemberModalVisible}
-          onCancel={() => setMemberModalVisible(false)}
-          footer={null}
-        >
-          <Form form={memberForm} onFinish={handleAddMember} layout="vertical">
-            <Form.Item 
-              name="name" 
-              label="Member Name"
-              rules={[{ required: true }]}
-            >
-              <Input prefix={<UserOutlined />} />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" block icon={<PlusOutlined />}>
-              Create Member
-            </Button>
-          </Form>
-        </Modal>
+        
 
         <Modal
           title="Record Payment"
