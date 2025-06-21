@@ -10,7 +10,7 @@ import {
   Modal 
 } from "antd";
 import { 
-  UserOutlined, 
+  
   LockOutlined,
   MailOutlined 
 } from "@ant-design/icons";
