@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  Layout, Table, Button, Modal, Form, Input, Select, message, Card, DatePicker, Space, Typography 
+  Layout, Table, Button, Modal, Form, Input, Select, message, Space, Typography 
 } from 'antd';
-import { PlusOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
 import { jwtDecode } from 'jwt-decode';
@@ -26,19 +26,52 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
-  const [memberExpenses, setMemberExpenses] = useState([]);
   const [isExpenseModalVisible, setExpenseModalVisible] = useState(false);
-  const [isMemberModalVisible, setMemberModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const [memberForm] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [currentExpenseId, setCurrentExpenseId] = useState(null);
   const [userRole, setUserRole] = useState('USER');
-  const [currentMemberId, setCurrentMemberId] = useState(null);
   const [selectedClearMemberId, setSelectedClearMemberId] = useState(null);
   const [isClearModalVisible, setClearModalVisible] = useState(false);
   const [currentClearExpenseId, setCurrentClearExpenseId] = useState(null);
   const [clearAmount, setClearAmount] = useState('');
+
+  const getRoleFromToken = useCallback((decoded) => {
+    try {
+      const roles = decoded.roles || decoded.role || [];
+      const rolesArray = Array.isArray(roles) ? roles : [roles];
+      const role = rolesArray
+        .find(r => r)
+        ?.replace(/^ROLE_/ig, '')
+        ?.toUpperCase() || 'USER';
+      return role === 'ROLE_ADMIN' ? 'ADMIN' : role;
+    } catch (error) {
+      console.error('Error decoding role:', error);
+      return 'USER';
+    }
+  }, []);
+
+  const handleApiError = useCallback((error, defaultMessage) => {
+    message.error(error.response?.data?.message || defaultMessage);
+  }, []);
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/expenses`);
+      setExpenses(response.data);
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch expenses');
+    }
+  }, [handleApiError]);
+
+  const fetchMembers = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/members`);
+      setMembers(response.data);
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch members');
+    }
+  }, [handleApiError]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -49,40 +82,6 @@ const AdminDashboard = () => {
   
     try {
       const decoded = jwtDecode(token);
-      setCurrentMemberId(decoded.memberId || decoded.sub);
-    } catch (error) {
-      console.error('Authentication error:', error);
-    }
-  }, [navigate]);
-
-  const getRoleFromToken = (decoded) => {
-  try {
-    // Handle different token structures
-    const roles = decoded.roles || decoded.role || [];
-    
-    // Normalize to array
-    const rolesArray = Array.isArray(roles) ? roles : [roles];
-    
-    // Find and clean the first role
-    const role = rolesArray
-      .find(r => r) // Get first truthy role
-      ?.replace(/^ROLE_/ig, '') // Remove all ROLE_ prefixes
-      ?.replace(/^ROLE_/ig, '') // Remove again in case of double prefix
-      ?.toUpperCase() || 'USER';
-    
-    return role === 'ROLE_ADMIN' ? 'ADMIN' : role;
-  } catch (error) {
-    console.error('Error decoding role:', error);
-    return 'USER';
-  }
-};
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const decoded = jwtDecode(token);
       const role = getRoleFromToken(decoded);
       setUserRole(role || 'USER');
 
@@ -91,48 +90,29 @@ const AdminDashboard = () => {
           await Promise.all([
             fetchExpenses(),
             fetchMembers(),
-           ]);
+          ]);
         } catch (error) {
           message.error('Failed to initialize data');
         }
       };
       fetchData();
     } catch (error) {
+      console.error('Authentication error:', error);
       localStorage.removeItem('token');
       navigate('/login');
     }
-  }, [navigate]);
-
-  const fetchExpenses = useCallback(async () => {
-    try {
-      const response = await axios.get(`${apiBaseUrl}/api/expenses`);
-      setExpenses(response.data);
-    } catch (error) {
-      handleApiError(error, 'Failed to fetch expenses');
-    }
-  }, []);
-
-  const fetchMembers = useCallback(async () => {
-    try {
-      const response = await axios.get(`${apiBaseUrl}/api/members`);
-      setMembers(response.data);
-    } catch (error) {
-      handleApiError(error, 'Failed to fetch members');
-    }
-  }, []);
-
-  
-  const handleApiError = (error, defaultMessage) => {
-    message.error(error.response?.data?.message || defaultMessage);
-  };
+  }, [navigate, getRoleFromToken, fetchExpenses, fetchMembers, setUserRole]);
 
   const handleAddExpense = async (values) => {
     try {
-      await axios.post(`${apiBaseUrl}/api/expenses`, values);
+      await axios.post(`${apiBaseUrl}/api/expenses`, {
+        ...values,
+        date: values.date.format('YYYY-MM-DD')
+      });
       message.success('Expense added successfully!');
       setExpenseModalVisible(false);
       form.resetFields();
-      await Promise.all([fetchExpenses()]);
+      await fetchExpenses();
     } catch (error) {
       handleApiError(error, 'Failed to add expense');
     }
@@ -140,11 +120,14 @@ const AdminDashboard = () => {
 
   const handleUpdateExpense = async (values) => {
     try {
-      await axios.put(`${apiBaseUrl}/api/expenses/${currentExpenseId}`, values);
+      await axios.put(`${apiBaseUrl}/api/expenses/${currentExpenseId}`, {
+        ...values,
+        date: values.date.format('YYYY-MM-DD')
+      });
       message.success('Expense updated successfully!');
       setExpenseModalVisible(false);
       setIsEditing(false);
-      await Promise.all([fetchExpenses()]);
+      await fetchExpenses();
     } catch (error) {
       handleApiError(error, 'Failed to update expense');
     }
@@ -154,7 +137,7 @@ const AdminDashboard = () => {
     try {
       await axios.delete(`${apiBaseUrl}/api/expenses/${id}`);
       message.success('Expense deleted successfully!');
-      await Promise.all([fetchExpenses()]);
+      await fetchExpenses();
     } catch (error) {
       handleApiError(error, 'Failed to delete expense');
     }
@@ -177,13 +160,11 @@ const AdminDashboard = () => {
       setClearModalVisible(false);
       setSelectedClearMemberId(null);
       setClearAmount('');
-      await Promise.all([fetchExpenses()]);
+      await fetchExpenses();
     } catch (error) {
       handleApiError(error, 'Failed to clear expense');
     }
-  };
-
-  
+  }; 
 
   const columns = [
     {
