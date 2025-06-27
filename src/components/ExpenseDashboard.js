@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  Layout, Table, Card, Typography, Space, message,
+  Layout, Table, Typography, Space, message,
   Button, Form, Input, Select, DatePicker, Modal,
-  Descriptions, Divider, Tag, Statistic, Row, Col, Spin
+  Descriptions, Divider, Tag, Statistic, Row, Col, Spin, Card
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -11,7 +11,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
@@ -35,44 +35,68 @@ const ExpenseDashboard = () => {
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [form] = Form.useForm();
   const [userRole, setUserRole] = useState('USER');
-  const [currentMemberId, setCurrentMemberId] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [isPaymentHistoryLoading, setIsPaymentHistoryLoading] = useState(false);
 
-  // Role extraction function
-  const getRoleFromToken = (decoded) => {
-  try {
-    // Handle different token structures
-    const roles = decoded.roles || decoded.role || [];
-    
-    // Normalize to array
-    const rolesArray = Array.isArray(roles) ? roles : [roles];
-    
-    // Find and clean the first role
-    const role = rolesArray
-      .find(r => r) // Get first truthy role
-      ?.replace(/^ROLE_/ig, '') // Remove all ROLE_ prefixes
-      ?.replace(/^ROLE_/ig, '') // Remove again in case of double prefix
-      ?.toUpperCase() || 'USER';
-    
-    return role === 'ROLE_ADMIN' ? 'ADMIN' : role;
-  } catch (error) {
-    console.error('Error decoding role:', error);
-    return 'USER';
-  }
-};
+  // Memoized functions
+  const getRoleFromToken = useCallback((decoded) => {
+    try {
+      const roles = decoded.roles || decoded.role || [];
+      const rolesArray = Array.isArray(roles) ? roles : [roles];
+      const role = rolesArray
+        .find(r => r)
+        ?.replace(/^ROLE_/ig, '')
+        ?.toUpperCase() || 'USER';
+      return role === 'ROLE_ADMIN' ? 'ADMIN' : role;
+    } catch (error) {
+      console.error('Error decoding role:', error);
+      return 'USER';
+    }
+  }, []);
 
-  // Error handler
-  const handleApiError = (error, defaultMessage) => {
+  const handleApiError = useCallback((error, defaultMessage) => {
     if (error.response) {
       const { data } = error.response;
       message.error(data?.message || defaultMessage);
     } else {
       message.error(defaultMessage);
     }
-  };
+  }, []);
 
-  // Authentication and data initialization
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/expenses`);
+      setExpenses(response.data);
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch expenses');
+    }
+  }, [handleApiError]); // Removed apiBaseUrl from dependencies
+
+  const fetchMembers = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/members`);
+      setMembers(response.data);
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch members');
+    }
+  }, [handleApiError]); // Removed apiBaseUrl from dependencies
+
+  const fetchMemberExpenses = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/expenses/summary`);
+      const formattedData = Object.entries(response.data).map(([name, amounts]) => ({
+        name,
+        total: amounts.total,
+        cleared: amounts.cleared,
+        remaining: amounts.remaining
+      }));
+      setMemberExpenses(formattedData);
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch member expenses');
+    }
+  }, [handleApiError]); // Removed apiBaseUrl from dependencies
+
+  // Initialization effect
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -89,7 +113,6 @@ const ExpenseDashboard = () => {
 
       const role = getRoleFromToken(decoded);
       setUserRole(role || 'USER');
-      setCurrentMemberId(decoded.memberId || decoded.sub);
 
       const fetchData = async () => {
         try {
@@ -109,43 +132,9 @@ const ExpenseDashboard = () => {
       localStorage.removeItem('token');
       navigate('/login');
     }
-  }, [navigate]);
+  }, [navigate, getRoleFromToken, fetchExpenses, fetchMembers, fetchMemberExpenses, setUserRole]);
 
-  // Data fetching functions
-  const fetchExpenses = useCallback(async () => {
-    try {
-      const response = await axios.get(`${apiBaseUrl}/api/expenses`);
-      setExpenses(response.data);
-    } catch (error) {
-      handleApiError(error, 'Failed to fetch expenses');
-    }
-  }, []);
-
-  const fetchMembers = useCallback(async () => {
-    try {
-      const response = await axios.get(`${apiBaseUrl}/api/members`);
-      setMembers(response.data);
-    } catch (error) {
-      handleApiError(error, 'Failed to fetch members');
-    }
-  }, []);
-
-  const fetchMemberExpenses = useCallback(async () => {
-    try {
-      const response = await axios.get(`${apiBaseUrl}/api/expenses/summary`);
-      const formattedData = Object.entries(response.data).map(([name, amounts]) => ({
-        name,
-        total: amounts.total,
-        cleared: amounts.cleared,
-        remaining: amounts.remaining
-      }));
-      setMemberExpenses(formattedData);
-    } catch (error) {
-      handleApiError(error, 'Failed to fetch member expenses');
-    }
-  }, []);
-    
-  // Add Expense handler
+  // Expense handlers
   const handleAddExpense = async (values) => {
     try {
       await axios.post(`${apiBaseUrl}/api/expenses`, {
@@ -161,24 +150,21 @@ const ExpenseDashboard = () => {
     }
   };
 
-  // Show expense details
   const showExpenseDetails = async (expense) => {
-  try {
-    setIsPaymentHistoryLoading(true);
-    setSelectedExpense(expense);
-    
-    const response = await axios.get(`${apiBaseUrl}/api/expenses/${expense.id}/payments`);
-    console.log('Payment History Data:', response.data); // Add this line
-    console.log('Members Data:', members); // Add this line
-    setPaymentHistory(response.data);
-    
-    setDetailModalVisible(true);
-  } catch (error) {
-    handleApiError(error, 'Failed to fetch payment history');
-  } finally {
-    setIsPaymentHistoryLoading(false);
-  }
-};
+    try {
+      setIsPaymentHistoryLoading(true);
+      setSelectedExpense(expense);
+      
+      const response = await axios.get(`${apiBaseUrl}/api/expenses/${expense.id}/payments`);
+      setPaymentHistory(response.data);
+      
+      setDetailModalVisible(true);
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch payment history');
+    } finally {
+      setIsPaymentHistoryLoading(false);
+    }
+  };
 
   // Table columns
   const columns = [

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout, Card, Table, Statistic, Row, Col, Typography, Spin, Alert } from 'antd';
-import { DollarOutlined, TeamOutlined, PieChartOutlined } from '@ant-design/icons';
+import { DollarOutlined, TeamOutlined } from '@ant-design/icons';
 import api from '../utils/api';
 import moment from 'moment';
 
