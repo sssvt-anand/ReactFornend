@@ -59,9 +59,7 @@ const Sidebar = () => {
         <Menu.Item key="expenses" icon={<PieChartOutlined />}>
           <Link to="/expenses">Expenses</Link>
         </Menu.Item>
-        <Menu.Item key="users" icon={<UserOutlined />}>
-          <Link to="/users">User Management</Link>
-        </Menu.Item>
+       
         <Menu.Item key="admins" icon={<UserOutlined />}>
         <Link to="/admindashboard">Admin Dashboard</Link> {/* Fixed spelling */}
         </Menu.Item>

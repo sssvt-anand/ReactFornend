@@ -41,18 +41,26 @@ const ExpenseDashboard = () => {
 
   // Role extraction function
   const getRoleFromToken = (decoded) => {
-    try {
-      const roles = decoded.roles || decoded.role || [];
-      const roleValue = Array.isArray(roles) ? roles[0] : roles;
-      const roleString = typeof roleValue === 'object' 
-        ? roleValue.authority 
-        : roleValue;
-      return roleString?.replace(/^ROLE_/i, '')?.toUpperCase() || 'USER';
-    } catch (error) {
-      console.error('Role extraction error:', error);
-      return 'USER';
-    }
-  };
+  try {
+    // Handle different token structures
+    const roles = decoded.roles || decoded.role || [];
+    
+    // Normalize to array
+    const rolesArray = Array.isArray(roles) ? roles : [roles];
+    
+    // Find and clean the first role
+    const role = rolesArray
+      .find(r => r) // Get first truthy role
+      ?.replace(/^ROLE_/ig, '') // Remove all ROLE_ prefixes
+      ?.replace(/^ROLE_/ig, '') // Remove again in case of double prefix
+      ?.toUpperCase() || 'USER';
+    
+    return role === 'ROLE_ADMIN' ? 'ADMIN' : role;
+  } catch (error) {
+    console.error('Error decoding role:', error);
+    return 'USER';
+  }
+};
 
   // Error handler
   const handleApiError = (error, defaultMessage) => {
