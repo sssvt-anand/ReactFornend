@@ -4,7 +4,7 @@ import { Layout } from "antd";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import ExpenseDashboard from "./components/ExpenseDashboard";
-
+import MemberBudgetPage from "./components/MemberBudgetPage"; // Import the new component
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ExportPage from "./components/ExportPage"; 
@@ -21,7 +21,7 @@ const App = () => {
   }, []);
 
   return (
-    <Router> {/* ✅ This should be the ONLY Router in the app */}
+    <Router>
       <Routes>
         {!isAuthenticated ? (
           <>
@@ -57,21 +57,32 @@ const App = () => {
                 </Layout>
               }
             />
-            
-                  
-<Route
-  path="/admindashboard" 
-  element={
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sidebar />
-      <Layout>
-        <Content style={{ margin: "20px" }}>
-          <AdminDashboard /> {/* Now actually using the imported component */}
-        </Content>
-      </Layout>
-    </Layout>
-  }
-/>
+            <Route
+              path="/member-budget"
+              element={
+                <Layout style={{ minHeight: "100vh" }}>
+                  <Sidebar />
+                  <Layout>
+                    <Content style={{ margin: "20px" }}>
+                      <MemberBudgetPage />
+                    </Content>
+                  </Layout>
+                </Layout>
+              }
+            />
+            <Route
+              path="/admindashboard" 
+              element={
+                <Layout style={{ minHeight: "100vh" }}>
+                  <Sidebar />
+                  <Layout>
+                    <Content style={{ margin: "20px" }}>
+                      <AdminDashboard />
+                    </Content>
+                  </Layout>
+                </Layout>
+              }
+            />
             <Route
               path="/export"
               element={

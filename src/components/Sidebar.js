@@ -5,7 +5,8 @@ import {
   PieChartOutlined, 
   UserOutlined, 
   DownloadOutlined, 
-  LogoutOutlined 
+  LogoutOutlined,
+  DollarOutlined 
 } from "@ant-design/icons";
 
 const { Sider } = Layout;
@@ -59,9 +60,11 @@ const Sidebar = () => {
         <Menu.Item key="expenses" icon={<PieChartOutlined />}>
           <Link to="/expenses">Expenses</Link>
         </Menu.Item>
-       
+        <Menu.Item key="budget" icon={<DollarOutlined />}>
+          <Link to="/member-budget">Member Budget</Link>
+        </Menu.Item>
         <Menu.Item key="admins" icon={<UserOutlined />}>
-        <Link to="/admindashboard">Admin Dashboard</Link> {/* Fixed spelling */}
+        <Link to="/admindashboard">Admin Dashboard</Link>
         </Menu.Item>
         <Menu.Item key="export" icon={<DownloadOutlined />}>
           <Link to="/export">Export Data</Link>
