@@ -170,7 +170,7 @@ const ExpenseDashboard = () => {
   const columns = [
     {
       title: 'Member',
-      dataIndex: ['member', 'name'],
+      dataIndex: ['memberName'],
       key: 'member',
       sorter: (a, b) => a.member.name.localeCompare(b.member.name),
     },
@@ -346,7 +346,7 @@ const ExpenseDashboard = () => {
             <>
               <Descriptions bordered column={2}>
                 <Descriptions.Item label="Member" span={2}>
-                  <Tag color="blue">{selectedExpense.member?.name || 'Unknown'}</Tag>
+                  <Tag color="blue">{selectedExpense.memberName|| 'Unknown'}</Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="Description">
                   {selectedExpense.description}

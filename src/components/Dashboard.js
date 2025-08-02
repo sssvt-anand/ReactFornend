@@ -81,7 +81,7 @@ const Dashboard = () => {
   const expenseColumns = [
     {
       title: 'Member',
-      dataIndex: ['member', 'name'],
+      dataIndex: ['memberName'],
       key: 'member',
     },
     {

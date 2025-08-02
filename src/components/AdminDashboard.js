@@ -179,7 +179,7 @@ const AdminDashboard = () => {
   const columns = [
     {
       title: 'Member',
-      dataIndex: ['member', 'name'],
+      dataIndex: ['memberName'],
       key: 'member',
       sorter: (a, b) => a.member.name.localeCompare(b.member.name),
     },
