@@ -28,7 +28,7 @@ const MemberBudgetPage = () => {
 
   const safeToFixed = (value) => {
     if (value === undefined || value === null) return 'N/A';
-    return `$${Number(value).toFixed(2)}`;
+    return `₹${Number(value).toFixed(2)}`;
   };
 
   const columns = [
@@ -160,7 +160,7 @@ const MemberBudgetPage = () => {
                   title="Total Budget"
                   value={budgetStatus.totalBudget || 0}
                   precision={2}
-                  prefix="$"
+                  prefix="₹"
                 />
               </Card>
             </Col>
@@ -170,7 +170,7 @@ const MemberBudgetPage = () => {
                   title="Utilized Budget"
                   value={budgetStatus.utilizedBudget || 0}
                   precision={2}
-                  prefix="$"
+                  prefix="₹"
                 />
               </Card>
             </Col>
@@ -180,7 +180,7 @@ const MemberBudgetPage = () => {
                   title="Remaining Budget"
                   value={budgetStatus.remainingBudget || 0}
                   precision={2}
-                  prefix="$"
+                  prefix="₹"
                 />
               </Card>
             </Col>
@@ -264,7 +264,7 @@ const MemberBudgetPage = () => {
               style={{ width: '100%' }}
               min={0}
               precision={2}
-              prefix="$"
+              prefix="₹"
             />
           </Form.Item>
         </Form>
